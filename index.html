@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Certification Exam | Data Analytics</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { 
+            --primary: #3b82f6; 
+            --bg-main: #121212;
+            --bg-card: #1e1e1e;
+            --bg-hover: #2d2d2d;
+            --text-main: #e0e0e0; 
+            --text-light: #a0a0a0; 
+            --border: #333;
+            --answered: #10b981; 
+            --review: #f59e0b; 
+            --unanswered: #ef4444; 
+            --not-visited: #2d2d2d; 
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg-main); color: var(--text-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        /* General Buttons */
+        .btn { padding: 12px 25px; border: none; border-radius: 5px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+        .btn:hover { opacity: 0.9; }
+        .btn-primary { background: var(--primary); color: #fff; }
+
+        /* Landing Screen */
+        #landing-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: var(--bg-main); overflow-y: auto; padding: 40px 20px; }
+        .landing-container { max-width: 600px; width: 100%; padding: 40px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.5); background: var(--bg-card); border-top: 6px solid var(--primary); }
+        .landing-title { text-align: center; font-size: 1.8rem; margin-bottom: 20px; color: var(--primary); }
+        .instructions { background: var(--bg-hover); padding: 20px; border-radius: 8px; margin-bottom: 30px; font-size: 0.95rem; border: 1px solid var(--border); }
+        .instructions ul { padding-left: 20px; margin-top: 10px; }
+        .instructions li { margin-bottom: 8px; color: var(--text-light); }
+        
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 8px; color: var(--text-main);}
+        .form-group input, .form-group select { width: 100%; padding: 12px; background: var(--bg-hover); color: var(--text-main); border: 1px solid var(--border); border-radius: 5px; font-size: 1rem; }
+        .start-btn { width: 100%; font-size: 1.2rem; padding: 15px; margin-top: 10px; }
+        .error-msg { color: var(--unanswered); font-size: 0.9rem; margin-top: 5px; display: none; }
+
+        /* Navbar */
+        header { background: var(--bg-card); color: var(--text-main); padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 10; border-bottom: 1px solid var(--border); }
+        .logo { font-size: 1.2rem; font-weight: bold; color: var(--primary); display: flex; align-items: center; gap: 15px;}
+        .student-badge { font-size: 0.9rem; font-weight: normal; background: var(--bg-hover); padding: 5px 15px; border-radius: 20px; color: var(--text-light);}
+        .timer-badge { background: #450a0a; color: #fca5a5; padding: 8px 15px; border-radius: 20px; font-weight: bold; font-family: monospace; font-size: 1.1rem; border: 1px solid #7f1d1d; }
+
+        /* Main Exam Layout */
+        .portal-container { display: flex; flex: 1; overflow: hidden; }
+        .question-area { flex: 3; background: var(--bg-main); display: flex; flex-direction: column; padding: 40px; overflow-y: auto; }
+        .question-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 30px; }
+        .question-number { font-size: 1.2rem; font-weight: bold; color: var(--primary); }
+        .question-text { font-size: 1.3rem; margin-bottom: 30px; line-height: 1.5; color: var(--text-main);}
+        
+        .options-container { display: flex; flex-direction: column; gap: 15px; }
+        .option-label { display: flex; align-items: center; padding: 15px 20px; border: 2px solid var(--border); border-radius: 8px; cursor: pointer; transition: all 0.2s; font-size: 1.1rem; background: var(--bg-card);}
+        .option-label:hover { border-color: var(--primary); background: var(--bg-hover); }
+        .option-label.selected { border-color: var(--primary); background: #1e3a8a; }
+        .option-label input { display: none; }
+        .option-letter { font-weight: bold; background: var(--bg-hover); width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; margin-right: 15px; color: var(--text-main); }
+        .option-label.selected .option-letter { background: var(--primary); color: #fff; }
+
+        .action-bar { margin-top: auto; padding-top: 30px; display: flex; justify-content: space-between; border-top: 1px solid var(--border); }
+        .btn-outline { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); }
+        .btn-review { background: #451a03; border: 1px solid #78350f; color: #fcd34d; }
+
+        /* Palette Area */
+        .palette-area { flex: 1; background: var(--bg-card); border-left: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; overflow-y: auto; min-width: 300px; }
+        .palette-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; color: var(--text-main); }
+        .palette-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 30px; }
+        .palette-btn { height: 40px; border: 1px solid var(--border); background: var(--not-visited); border-radius: 5px; font-weight: bold; cursor: pointer; color: var(--text-main); transition: transform 0.1s; }
+        .palette-btn.active { border: 2px solid var(--primary); box-shadow: 0 0 5px rgba(59, 130, 246, 0.5); transform: scale(1.1); }
+        .status-answered { background: var(--answered); color: white; border-color: #059669; }
+        .status-unanswered { background: var(--unanswered); color: white; border-color: #b91c1c; }
+        .status-review { background: var(--review); color: white; border-color: #d97706; }
+        
+        .legend { font-size: 0.85rem; display: flex; flex-direction: column; gap: 8px; margin-bottom: 30px; color: var(--text-light);}
+        .legend-item { display: flex; align-items: center; gap: 10px; }
+        .legend-box { width: 15px; height: 15px; border-radius: 3px; border: 1px solid var(--border);}
+
+        .submit-btn-large { margin-top: auto; padding: 15px; background: var(--answered); color: white; border: none; border-radius: 5px; font-size: 1.1rem; font-weight: bold; cursor: pointer; }
+        .submit-btn-large:hover { background: #059669; }
+
+        /* Results Screen */
+        #results-screen { display: none; padding: 40px; max-width: 800px; margin: 20px auto; background: var(--bg-card); border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: center; max-height: 95vh; overflow-y: auto; }
+        .score-circle { width: 150px; height: 150px; border-radius: 50%; border: 10px solid var(--primary); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: bold; margin: 0 auto 20px; color: var(--primary); }
+        .student-result-info { font-size: 1.1rem; color: var(--text-light); margin-bottom: 20px; padding: 15px; background: var(--bg-hover); border-radius: 8px; display: inline-block;}
+        #feedback-details { text-align: left; background: var(--bg-hover); padding: 20px; border-radius: 8px; max-height: 50vh; overflow-y: auto; border: 1px solid var(--border); margin-bottom: 20px; }
+
+        @media (max-width: 768px) { .portal-container { flex-direction: column; overflow-y: auto; } .question-area, .palette-area { flex: none; width: 100%; overflow-y: visible; } body { height: auto; } }
+    </style>
+</head>
+<body>
+
+    <div id="landing-screen">
+        <div class="landing-container">
+            <h1 class="landing-title">Data Analytics & Visualization Exam</h1>
+            
+            <div class="instructions">
+                <strong>Exam Instructions:</strong>
+                <ul>
+                    <li><strong>Duration:</strong> 75 Minutes. The timer will start immediately upon clicking "Start".</li>
+                    <li><strong>Format:</strong> 75 Multiple Choice Questions.</li>
+                    <li><strong>Environment:</strong> The exam will enter Full-Screen mode. Please do not exit full-screen.</li>
+                    <li><strong>Resilience:</strong> If you accidentally refresh the page, your timer and answers will be saved.</li>
+                    <li><strong>Submission:</strong> The exam will automatically submit when the timer hits zero and save to the database.</li>
+                </ul>
+            </div>
+
+            <div class="form-group">
+                <label for="student-name">Full Name</label>
+                <input type="text" id="student-name" placeholder="Enter your full name">
+                <div class="error-msg" id="err-name">Please enter your name.</div>
+            </div>
+
+            <div class="form-group">
+                <label for="student-enroll">Enrolment Number</label>
+                <input type="text" id="student-enroll" placeholder="Enter your enrolment number">
+                <div class="error-msg" id="err-enroll">Please enter your enrolment number.</div>
+            </div>
+
+            <div class="form-group">
+                <label for="student-section">Section</label>
+                <select id="student-section">
+                    <option value="">Select Section...</option>
+                    <option value="A">Section A</option>
+                    <option value="B">Section B</option>
+                    <option value="C">Section C</option>
+                    <option value="D">Section D</option>
+                    <option value="E">Section E</option>
+                </select>
+                <div class="error-msg" id="err-section">Please select your section.</div>
+            </div>
+
+            <button class="btn btn-primary start-btn" onclick="startExam()">Start Exam</button>
+        </div>
+    </div>
+
+    <div id="exam-screen" style="display: none; flex-direction: column; height: 100%;">
+        <header>
+            <div class="logo">
+                Exam Portal 
+                <span class="student-badge" id="header-student-info"></span>
+            </div>
+            <div class="timer-badge" id="timer">--:--</div>
+        </header>
+
+        <div class="portal-container">
+            <div class="question-area">
+                <div class="question-header">
+                    <div class="question-number" id="q-number">Question 1 of 75</div>
+                </div>
+                
+                <div class="question-text" id="q-text">Loading question...</div>
+                
+                <div class="options-container" id="options-container"></div>
+
+                <div class="action-bar">
+                    <button class="btn btn-outline" onclick="prevQuestion()" id="btn-prev">Previous</button>
+                    <button class="btn btn-review" onclick="markForReview()" id="btn-review">Mark for Review</button>
+                    <button class="btn btn-primary" onclick="nextQuestion()" id="btn-next">Save & Next</button>
+                </div>
+            </div>
+
+            <div class="palette-area">
+                <div class="palette-title">Question Palette</div>
+                <div class="legend">
+                    <div class="legend-item"><div class="legend-box" style="background: var(--answered)"></div> Answered</div>
+                    <div class="legend-item"><div class="legend-box" style="background: var(--unanswered)"></div> Not Answered</div>
+                    <div class="legend-item"><div class="legend-box" style="background: var(--not-visited)"></div> Not Visited</div>
+                    <div class="legend-item"><div class="legend-box" style="background: var(--review)"></div> Marked for Review</div>
+                </div>
+                <div class="palette-grid" id="palette-grid"></div>
+                <button class="submit-btn-large" id="submit-btn" onclick="submitExam(true)">Submit Final Exam</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="results-screen">
+        <h1 style="margin-bottom: 10px; color: var(--text-main);">Exam Completed</h1>
+        <div class="student-result-info" id="final-student-info"></div>
+        <div class="score-circle" id="final-score">0%</div>
+        <h3 style="margin-bottom: 20px; color: var(--text-light);" id="score-text">You scored 0 out of 75</h3>
+        
+        <div id="feedback-details"></div>
+        
+        <button class="btn btn-primary" style="margin-top: 10px; padding: 15px 30px;" onclick="resetSystem()">Return to Home (Reset)</button>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. SUPABASE CONFIGURATION (UPDATE THESE!)
+        // ==========================================
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // ==========================================
+        // 2. EXAM DATA & STATE
+        // ==========================================
+        const EXAM_DURATION_MINUTES = 75;
+        
+        // Shortened to 5 for testing. Paste your 75 questions here!
+        const quizData = [
+            { q: "What percentage of analytics work is typically spent processing and cleaning data?", opts: ["10%", "30%", "50%", "70%"], ans: 3 },
+            { q: "Which of the following is NOT a stage in the Analytics Life Cycle?", opts: ["Ask", "Prepare", "Process", "Guess"], ans: 3 },
+            { q: "'Analytics is the brain, Visualization is the...'?", opts: ["Heart", "Face", "Hands", "Voice"], ans: 1 },
+            { q: "A model estimating next month's product demand is an example of what type of analytics?", opts: ["Descriptive", "Diagnostic", "Predictive", "Prescriptive"], ans: 2 },
+            { q: "A dashboard showing last month's total sales represents:", opts: ["Descriptive Analytics", "Diagnostic Analytics", "Predictive Analytics", "Prescriptive Analytics"], ans: 0 },
+            { q: "By default, how are 'Text' data types aligned in Google Sheets?", opts: ["Left", "Right", "Center", "Justified"], ans: 0 },
+            { q: "Which data type in Sheets is internally stored as a number?", opts: ["Boolean", "Text", "Date", "Error"], ans: 2 },
+            { q: "What does the error '#DIV/0!' mean?", opts: ["Wrong data type", "Invalid cell reference", "Dividing by zero", "Data not available"], ans: 2 },
+            { q: "Which of the following represents an Absolute Cell Reference?", opts: ["A1", "$A$1", "$A1", "A$1"], ans: 1 },
+            { q: "In the reference '$A1', what is locked?", opts: ["Only the row", "Only the column", "Both row and column", "Neither"], ans: 1 },
+            { q: "What is the primary purpose of multi-level sorting?", opts: ["To delete blank rows", "To group similar values and surface patterns", "To permanently hide irrelevant data", "To extract text from columns"], ans: 1 },
+            { q: "Does filtering permanently delete the hidden rows?", opts: ["Yes", "No", "Only if saved", "Only if it is a number filter"], ans: 1 },
+            { q: "What function checks if a cell is empty?", opts: ["ISEMPTY()", "ISBLANK()", "ISNULL()", "CHECKBLANK()"], ans: 1 },
+            { q: "Which function removes extra spaces from a text string?", opts: ["CLEAN()", "SUBSTITUTE()", "TRIM()", "PROPER()"], ans: 2 },
+            { q: "If A2 contains 'viSHal', what does PROPER(A2) output?", opts: ["Vishal", "VISHAL", "vishal", "viSHal"], ans: 0 },
+            { q: "Which function counts ONLY numeric cells in a range?", opts: ["COUNTIF()", "COUNTA()", "COUNT()", "SUM()"], ans: 2 },
+            { q: "What is the correct formula to find the average spend for 'Sandwich' orders?", opts: ["AVERAGE(B2:B100, 'Sandwich')", "AVERAGEIF(B2:B100, 'Sandwich', C2:C100)", "SUMIF(B2:B100, 'Sandwich')/100", "AVERAGEIFS('Sandwich', B2:B100)"], ans: 1 },
+            { q: "Which function returns the current date AND time?", opts: ["TODAY()", "NOW()", "DATETIME()", "CURRENT()"], ans: 1 },
+            { q: "To calculate the difference in years between two dates, which function is used?", opts: ["YEARFRAC()", "DATEDIF()", "DATESUB()", "YEARDIF()"], ans: 1 },
+            { q: "What does EOMONTH(H2, 1) return?", opts: ["End of the current month", "First day of next month", "End of the next month", "End of the previous month"], ans: 2 },
+            { q: "What is the syntax for the IF function?", opts: ["=IF(value_if_true, value_if_false, condition)", "=IF(condition, value_if_true, value_if_false)", "=IF(condition, value_if_false, value_if_true)", "=IF(value_if_true, condition)"], ans: 1 },
+            { q: "The AND function returns TRUE only when:", opts: ["At least one condition is TRUE", "All conditions are TRUE", "All conditions are FALSE", "The first condition is TRUE"], ans: 1 },
+            { q: "The OR function returns FALSE only when:", opts: ["All conditions are TRUE", "At least one condition is FALSE", "All conditions are FALSE", "The first condition is FALSE"], ans: 2 },
+            { q: "In a Nested IF for grading (A, B, C, D), which threshold must you check first?", opts: ["The lowest threshold", "The highest threshold", "The middle threshold", "It doesn't matter"], ans: 1 },
+            { q: "Which is the cleaner, modern alternative to writing multiple Nested IFs?", opts: ["AND", "OR", "IFS", "MATCH"], ans: 2 },
+            { q: "What does COUNTIFS do?", opts: ["Counts based on a single condition", "Counts only empty cells", "Counts values when ALL multiple conditions match", "Sums values when conditions match"], ans: 2 },
+            { q: "In SUMIF(C2:C31, 'CSE', D2:D31), what does D2:D31 represent?", opts: ["The criteria range", "The criteria", "The sum range", "The output cell"], ans: 2 },
+            { q: "Which Conditional Formatting feature shows distribution as a heatmap?", opts: ["Data Bars", "Color Scales", "Icon Sets", "Custom Formulas"], ans: 1 },
+            { q: "What is the primary limitation of VLOOKUP?", opts: ["It only searches right-to-left", "It only searches left-to-right", "It cannot return numbers", "It requires a sorted table"], ans: 1 },
+            { q: "In VLOOKUP, what does 'FALSE' or '0' at the end of the formula indicate?", opts: ["Approximate match", "Exact match", "Return an error", "Search vertically"], ans: 1 },
+            { q: "Which function handles errors by allowing you to display a custom message like 'Not Found'?", opts: ["ISERROR", "IFERROR", "NOTFOUND", "MATCHERROR"], ans: 1 },
+            { q: "What does HLOOKUP search for?", opts: ["A value in the first column", "A value in the last column", "A value in the first row", "A value in the last row"], ans: 2 },
+            { q: "Which modern function allows searching in any direction (left, right, up, down)?", opts: ["VLOOKUP", "HLOOKUP", "XLOOKUP", "MATCH"], ans: 2 },
+            { q: "What does the MATCH function return?", opts: ["The value itself", "The position (index number) of the value", "An exact copy of the array", "An error"], ans: 1 },
+            { q: "Why is INDEX + MATCH better than VLOOKUP?", opts: ["It's visually prettier", "It overcomes the left-to-right limitation", "It automatically formats data", "It only works with dates"], ans: 1 },
+            { q: "What is the primary purpose of a Pivot Table?", opts: ["To write complex IF formulas", "To clean messy text data", "To instantly summarize large datasets", "To change cell colors automatically"], ans: 2 },
+            { q: "If you drag a text column into the 'Values' section of a Pivot Table, what function does Sheets default to?", opts: ["SUM", "AVERAGE", "COUNT", "MAX"], ans: 2 },
+            { q: "Which chart is best for comparing values across categories?", opts: ["Line Chart", "Column Chart", "Pie Chart", "Scatter Plot"], ans: 1 },
+            { q: "When should you use a Bar chart instead of a Column chart?", opts: ["When showing trends over time", "When category names are very long", "When showing part-to-whole proportions", "When comparing two numeric variables"], ans: 1 },
+            { q: "Which chart is ideal for showing trends, patterns, and seasonality over time?", opts: ["Line Chart", "Pie Chart", "Histogram", "Bubble Chart"], ans: 0 },
+            { q: "What is a key rule for Pie Charts?", opts: ["Compare more than 10 categories", "Use them for time-series data", "Values must represent a whole (100%)", "Always put them side-by-side"], ans: 2 },
+            { q: "Which chart shows the correlation between two numeric variables?", opts: ["Area Chart", "Scatter Plot", "Donut Chart", "Stacked Bar"], ans: 1 },
+            { q: "What formula forces all dates in a month to align to the last day of the month?", opts: ["TODAY()", "EOMONTH(Date, 0)", "MONTH()", "YEARFRAC()"], ans: 1 },
+            { q: "Which forecasting function is used if data is roughly a straight line?", opts: ["FORECAST.ETS", "FORECAST.LINEAR", "TREND.LINE", "PREDICT.NOW"], ans: 1 },
+            { q: "What calculates Profit Margin in a dashboard?", opts: ["Total Revenue - Total Cost", "Total Profit / Total Revenue", "Total Revenue / Total Profit", "Total Profit * Total Revenue"], ans: 1 },
+            { q: "What tool allows users to interactively filter an entire dashboard at once?", opts: ["VLOOKUP", "Slicer", "INDEX", "Data Validation"], ans: 1 },
+            { q: "For a Slicer to update multiple charts simultaneously, what must be true?", opts: ["They must be Pie Charts", "They must use different datasets", "All charts must be built from Pivot Tables using the exact same data range", "The Slicer must be red"], ans: 2 },
+            { q: "Dashboards monitor the present. What anticipates the future?", opts: ["Pivoting", "Filtering", "Forecasting", "Slicing"], ans: 2 },
+            { q: "What is the benefit of ARRAYFORMULA?", opts: ["It turns text into numbers", "It calculates across entire columns in one step without dragging", "It makes cells absolute", "It creates Pivot Tables"], ans: 1 },
+            { q: "In an ARRAYFORMULA, what does IF(ROW(A:A)=1, 'Header', ...) do?", opts: ["Skips blank rows", "Checks for errors", "Identifies the first row and places the column header", "Formats the cell as text"], ans: 2 },
+            { q: "Which dynamic array function produces a list of distinct values from a column?", opts: ["SORT", "UNIQUE", "FILTER", "QUERY"], ans: 1 },
+            { q: "Which function acts like a mini-database inside Sheets using SQL-like commands?", opts: ["FILTER", "SORTN", "ARRAYFORMULA", "QUERY"], ans: 3 },
+            { q: "What does Scenario Manager in What-If Analysis do?", opts: ["Changes formulas directly", "Saves multiple sets of inputs to compare outcomes", "Calculates a single unknown variable", "Formats cells conditionally"], ans: 1 },
+            { q: "What are the 'Outputs' in What-If Analysis?", opts: ["The variables we change", "The results we observe (e.g., Total Profit)", "The formulas we delete", "The charts we build"], ans: 1 },
+            { q: "Which tool acts as a 'reverse what-if', asking what input will achieve a target outcome?", opts: ["Scenario Manager", "Goal Seek", "ARRAYFORMULA", "VLOOKUP"], ans: 1 },
+            { q: "If you want to find the exact price needed to break even (Profit = 0), you should use:", opts: ["Scenario Manager", "Goal Seek", "COUNTIF", "Slicers"], ans: 1 },
+            { q: "Why do analysts transition from Excel to Python?", opts: ["Python is better for small datasets", "Python handles millions of rows effortlessly and automates tasks", "Python has built-in Slicers", "Excel cannot do math"], ans: 1 },
+            { q: "Which platform is best for cloud, collaboration, and GPU-heavy workloads?", opts: ["Jupyter Notebook", "Anaconda", "Google Colab", "Excel"], ans: 2 },
+            { q: "Which Python library is the foundation for numerical computing and works with arrays?", opts: ["Pandas", "Matplotlib", "Seaborn", "NumPy"], ans: 3 },
+            { q: "Which Python library is the core tool for data manipulation and uses DataFrames?", opts: ["NumPy", "Pandas", "Matplotlib", "Seaborn"], ans: 1 },
+            { q: "Compared to CSV files, JSON files are best for:", opts: ["Tabular data", "Hierarchical/nested data", "Excel reports", "Mathematical arrays"], ans: 1 },
+            { q: "Which Pandas method previews the first 5 rows of a dataset?", opts: ["df.tail()", "df.info()", "df.head()", "df.describe()"], ans: 2 },
+            { q: "Which method provides a statistical summary of numerical columns?", opts: ["df.info()", "df.summary()", "df.describe()", "df.stats()"], ans: 2 },
+            { q: "How do you find the total number of missing values in each column?", opts: ["df.isnull().sum()", "df.isna().count()", "df.missing()", "df.notnull()"], ans: 0 },
+            { q: "Which method removes rows containing missing (NaN) values?", opts: ["df.fillna()", "df.dropna()", "df.drop_duplicates()", "df.delete()"], ans: 1 },
+            { q: "To replace missing values with a specific number (e.g., 0), which method is used?", opts: ["df.replace(0)", "df.fillna(0)", "df.dropna(0)", "df.ffill(0)"], ans: 1 },
+            { q: "What does df.astype(int) do?", opts: ["Converts a column's data type to integer", "Removes integer values", "Creates a new integer column", "Sorts the column by integers"], ans: 0 },
+            { q: "Which function counts the frequency of unique values in a Pandas column?", opts: ["df.nunique()", "df.value_counts()", "df.count()", "df.frequency()"], ans: 1 },
+            { q: "What does df.filter(items=['Price', 'Age']) do?", opts: ["Filters rows where Price equals Age", "Selects only the columns named 'Price' and 'Age'", "Deletes the 'Price' and 'Age' columns", "Groups data by Price and Age"], ans: 1 },
+            { q: "What are the three main steps of the groupby() operation?", opts: ["Split, Apply, Combine", "Sort, Filter, Merge", "Clean, Process, Analyze", "Read, Write, Execute"], ans: 0 },
+            { q: "What does df.groupby('FuelType')['Price'].mean() calculate?", opts: ["The total sum of prices", "The average price for each Fuel Type", "The number of cars for each Fuel Type", "The maximum price overall"], ans: 1 },
+            { q: "Which Pandas method is primarily used for column-based joining similar to SQL joins?", opts: ["pd.concat()", "pd.append()", "pd.merge()", "df.combine()"], ans: 2 },
+            { q: "In pd.merge(), which 'how' parameter keeps ONLY the matching rows from both tables?", opts: ["how='left'", "how='right'", "how='outer'", "how='inner'"], ans: 3 },
+            { q: "Which 'how' parameter keeps ALL rows from the left table, plus matches from the right?", opts: ["how='left'", "how='outer'", "how='cross'", "how='inner'"], ans: 0 },
+            { q: "When using the .join() method in Pandas, what is the default join type?", opts: ["Inner", "Left", "Right", "Outer"], ans: 1 }
+        ];
+
+        let currentIndex = 0;
+        let answers = new Array(quizData.length).fill(null);
+        let statuses = new Array(quizData.length).fill('not-visited'); 
+        
+        let timerInterval;
+        let studentData = {};
+
+        window.onload = () => { checkExistingSession(); };
+
+        function checkExistingSession() {
+            const savedState = localStorage.getItem('examState');
+            if (savedState) {
+                const state = JSON.parse(savedState);
+                studentData = state.studentData;
+                answers = state.answers;
+                statuses = state.statuses;
+                currentIndex = state.currentIndex || 0;
+                
+                if (state.endTime && Date.now() < state.endTime) {
+                    switchToExamUI();
+                    startTimer(state.endTime);
+                } else {
+                    submitExam(false);
+                }
+            }
+        }
+
+        function saveStateToLocal(endTime) {
+            const state = {
+                studentData: studentData,
+                answers: answers,
+                statuses: statuses,
+                currentIndex: currentIndex,
+                endTime: endTime || localStorage.getItem('examEndTime')
+            };
+            localStorage.setItem('examState', JSON.stringify(state));
+        }
+
+        function enterFullScreen() {
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) { elem.requestFullscreen().catch(err => console.log(err)); } 
+            else if (elem.webkitRequestFullscreen) { elem.webkitRequestFullscreen().catch(err => console.log(err)); } 
+        }
+
+        function startExam() {
+            const name = document.getElementById('student-name').value.trim();
+            const enroll = document.getElementById('student-enroll').value.trim();
+            const section = document.getElementById('student-section').value;
+
+            document.getElementById('err-name').style.display = name === '' ? 'block' : 'none';
+            document.getElementById('err-enroll').style.display = enroll === '' ? 'block' : 'none';
+            document.getElementById('err-section').style.display = section === '' ? 'block' : 'none';
+
+            if (name === '' || enroll === '' || section === '') return;
+
+            studentData = { name, enroll, section };
+            const endTime = Date.now() + (EXAM_DURATION_MINUTES * 60 * 1000);
+            localStorage.setItem('examEndTime', endTime);
+            
+            saveStateToLocal(endTime);
+            enterFullScreen();
+            switchToExamUI();
+            startTimer(endTime);
+        }
+
+        function switchToExamUI() {
+            document.getElementById('landing-screen').style.display = 'none';
+            document.getElementById('exam-screen').style.display = 'flex';
+            document.getElementById('header-student-info').innerText = `${studentData.name} | ${studentData.enroll} | Sec ${studentData.section}`;
+            
+            renderPalette();
+            loadQuestion(currentIndex);
+        }
+
+        function startTimer(endTime) {
+            const timerEl = document.getElementById('timer');
+            timerInterval = setInterval(() => {
+                const now = Date.now();
+                const timeRemaining = Math.max(0, Math.floor((endTime - now) / 1000));
+                
+                let m = Math.floor(timeRemaining / 60);
+                let s = timeRemaining % 60;
+                timerEl.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    submitExam(false);
+                }
+            }, 1000);
+        }
+
+        function loadQuestion(index) {
+            currentIndex = index;
+            const q = quizData[index];
+            
+            document.getElementById('q-number').innerText = `Question ${index + 1} of ${quizData.length}`;
+            document.getElementById('q-text').innerText = q.q;
+
+            const optsContainer = document.getElementById('options-container');
+            optsContainer.innerHTML = '';
+            
+            const letters = ['A', 'B', 'C', 'D'];
+            q.opts.forEach((optText, i) => {
+                const label = document.createElement('label');
+                label.className = `option-label ${answers[index] === i ? 'selected' : ''}`;
+                label.onclick = () => selectOption(i, label);
+                
+                label.innerHTML = `
+                    <div class="option-letter">${letters[i]}</div>
+                    <div class="option-text">${optText}</div>
+                    <input type="radio" name="q-option" value="${i}">
+                `;
+                optsContainer.appendChild(label);
+            });
+
+            if (statuses[index] === 'not-visited') {
+                statuses[index] = 'unanswered';
+                updatePaletteBtn(index);
+            }
+
+            document.getElementById('btn-prev').style.visibility = index === 0 ? 'hidden' : 'visible';
+            document.getElementById('btn-next').innerText = index === quizData.length - 1 ? 'Save & Finish' : 'Save & Next';
+            
+            document.querySelectorAll('.palette-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`pal-btn-${index}`).classList.add('active');
+            saveStateToLocal();
+        }
+
+        function selectOption(optIndex, labelElement) {
+            answers[currentIndex] = optIndex;
+            statuses[currentIndex] = 'answered';
+            document.querySelectorAll('.option-label').forEach(el => el.classList.remove('selected'));
+            labelElement.classList.add('selected');
+            updatePaletteBtn(currentIndex);
+            saveStateToLocal();
+        }
+
+        function markForReview() {
+            statuses[currentIndex] = 'review';
+            updatePaletteBtn(currentIndex);
+            saveStateToLocal();
+            nextQuestion();
+        }
+
+        function nextQuestion() { if (currentIndex < quizData.length - 1) loadQuestion(currentIndex + 1); }
+        function prevQuestion() { if (currentIndex > 0) loadQuestion(currentIndex - 1); }
+
+        function renderPalette() {
+            const grid = document.getElementById('palette-grid');
+            grid.innerHTML = '';
+            for (let i = 0; i < quizData.length; i++) {
+                const btn = document.createElement('button');
+                btn.className = `palette-btn`;
+                btn.id = `pal-btn-${i}`;
+                btn.innerText = i + 1;
+                btn.onclick = () => loadQuestion(i);
+                grid.appendChild(btn);
+                updatePaletteBtn(i);
+            }
+        }
+
+        function updatePaletteBtn(index) {
+            const btn = document.getElementById(`pal-btn-${index}`);
+            if(!btn) return;
+            const isActive = btn.classList.contains('active');
+            btn.className = 'palette-btn'; 
+            if (isActive) btn.classList.add('active');
+
+            if (statuses[index] === 'answered') btn.classList.add('status-answered');
+            if (statuses[index] === 'unanswered') btn.classList.add('status-unanswered');
+            if (statuses[index] === 'review') btn.classList.add('status-review');
+        }
+
+        async function submitExam(isManual = false) {
+            if(isManual && !confirm("Are you sure you want to submit your exam?")) return;
+            
+            clearInterval(timerInterval);
+            document.getElementById('submit-btn').innerText = "Saving to Database...";
+            document.getElementById('submit-btn').disabled = true;
+            
+            if (document.exitFullscreen) document.exitFullscreen().catch(()=>{});
+
+            let score = 0;
+            let reviewHTML = '';
+
+            quizData.forEach((q, i) => {
+                const isCorrect = answers[i] === q.ans;
+                if (isCorrect) score++;
+                
+                if (!isCorrect) {
+                    const userAns = answers[i] !== null ? q.opts[answers[i]] : 'Not Answered';
+                    reviewHTML += `
+                        <div style="border-left: 4px solid #ef4444; padding-left: 15px; margin-bottom: 25px; border-bottom: 1px solid var(--border); padding-bottom: 15px;">
+                            <strong style="font-size: 1.1em; color: var(--text-main);">Q${i+1}: ${q.q}</strong><br><br>
+                            <span style="color:#ef4444; font-weight: 500;">Your Answer: ${userAns}</span><br>
+                            <span style="color:#10b981; font-weight: 500;">Correct Answer: ${q.opts[q.ans]}</span>
+                        </div>
+                    `;
+                }
+            });
+
+            const percent = Math.round((score / quizData.length) * 100);
+
+            // ==========================================
+            // 3. SAVE TO SUPABASE
+            // ==========================================
+            try {
+                // Remove this IF block once you put in your real keys!
+                if(SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+                    const { error } = await supabase
+                        .from('exam_results')
+                        .insert([{ 
+                            name: studentData.name, 
+                            enrollment_no: studentData.enroll, 
+                            section: studentData.section, 
+                            score: score, 
+                            percentage: percent 
+                        }]);
+                    if (error) console.error("Supabase Error:", error);
+                }
+            } catch (err) {
+                console.error("Database failed, but showing results anyway.", err);
+            }
+
+            document.getElementById('exam-screen').style.display = 'none';
+            const resultScreen = document.getElementById('results-screen');
+            resultScreen.style.display = 'block';
+            
+            document.getElementById('final-student-info').innerHTML = `
+                <strong>Name:</strong> ${studentData.name} &nbsp;|&nbsp; 
+                <strong>Enrolment:</strong> ${studentData.enroll} &nbsp;|&nbsp; 
+                <strong>Section:</strong> ${studentData.section}
+            `;
+
+            document.getElementById('final-score').innerText = `${percent}%`;
+            document.getElementById('score-text').innerText = `You scored ${score} out of ${quizData.length}`;
+            
+            const feedback = document.getElementById('feedback-details');
+            if (score === quizData.length) {
+                feedback.innerHTML = "<strong style='font-size: 1.2em; color: #10b981;'>Flawless!</strong><br><span style='color: var(--text-light)'>You have mastered Spreadsheets and Python for Data Analytics.</span>";
+            } else {
+                feedback.innerHTML = "<strong style='font-size: 1.2em; color: var(--text-main); display: block; margin-bottom: 15px;'>Areas for Improvement:</strong>" + reviewHTML;
+            }
+
+            localStorage.removeItem('examState');
+            localStorage.removeItem('examEndTime');
+        }
+
+        function resetSystem() {
+            localStorage.removeItem('examState');
+            localStorage.removeItem('examEndTime');
+            location.reload();
+        }
+    </script>
+</body>
+</html>
