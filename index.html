@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Professional Certification Exam | Data Analytics</title>
+    <link rel="icon" href="data:,">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root { 
@@ -82,12 +83,23 @@
 
         .submit-btn-large { margin-top: auto; padding: 15px; background: var(--answered); color: white; border: none; border-radius: 5px; font-size: 1.1rem; font-weight: bold; cursor: pointer; }
         .submit-btn-large:hover { background: #059669; }
+        .submit-btn-large:disabled { background: #374151; cursor: not-allowed; }
 
         /* Results Screen */
-        #results-screen { display: none; padding: 40px; max-width: 800px; margin: 20px auto; background: var(--bg-card); border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: center; max-height: 95vh; overflow-y: auto; }
+        #results-screen { display: none; padding: 40px; max-width: 900px; margin: 20px auto; background: var(--bg-card); border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: center; max-height: 95vh; overflow-y: auto; }
         .score-circle { width: 150px; height: 150px; border-radius: 50%; border: 10px solid var(--primary); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: bold; margin: 0 auto 20px; color: var(--primary); }
         .student-result-info { font-size: 1.1rem; color: var(--text-light); margin-bottom: 20px; padding: 15px; background: var(--bg-hover); border-radius: 8px; display: inline-block;}
-        #feedback-details { text-align: left; background: var(--bg-hover); padding: 20px; border-radius: 8px; max-height: 50vh; overflow-y: auto; border: 1px solid var(--border); margin-bottom: 20px; }
+        #feedback-details { text-align: left; background: var(--bg-hover); padding: 20px; border-radius: 8px; max-height: 40vh; overflow-y: auto; border: 1px solid var(--border); margin-bottom: 20px; }
+
+        /* Leaderboard CSS */
+        .leaderboard-section { margin-top: 40px; padding-top: 30px; border-top: 2px solid var(--border); text-align: left; }
+        .leaderboard-title { font-size: 1.6rem; color: var(--primary); margin-bottom: 20px; text-align: center; }
+        .leaderboard-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; color: var(--text-main); font-size: 0.95rem; }
+        .leaderboard-table th, .leaderboard-table td { border: 1px solid var(--border); padding: 12px; text-align: left; }
+        .leaderboard-table th { background: var(--bg-hover); color: var(--primary); font-weight: bold; }
+        .leaderboard-table tr:nth-child(even) { background: #1a1a1a; }
+        .leaderboard-table tr:hover { background: #262626; }
+        .rank-col { font-weight: bold; color: var(--answered); width: 80px; }
 
         @media (max-width: 768px) { .portal-container { flex-direction: column; overflow-y: auto; } .question-area, .palette-area { flex: none; width: 100%; overflow-y: visible; } body { height: auto; } }
     </style>
@@ -186,17 +198,24 @@
         
         <div id="feedback-details"></div>
         
-        <button class="btn btn-primary" style="margin-top: 10px; padding: 15px 30px;" onclick="resetSystem()">Return to Home (Reset)</button>
+        <div class="leaderboard-section">
+            <h2 class="leaderboard-title">🏆 Top 10 Leaderboard</h2>
+            <div id="leaderboard-container">
+                <p style="color: var(--text-light); text-align: center;">Loading Top Scores...</p>
+            </div>
+        </div>
+
+        <button class="btn btn-primary" style="margin-top: 30px; padding: 15px 30px; font-size: 1.1rem;" onclick="resetSystem()">Return to Home (Exit Exam)</button>
     </div>
 
     <script>
         // ==========================================
-        // 1. SUPABASE CONFIGURATION (LIVE KEYS)
+        // 1. SUPABASE CONFIGURATION 
         // ==========================================
         const SUPABASE_URL = 'https://xsulqlskcyihlkvvzscg.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_q0VuS8mEiisFDNk1goqSyA_Gir4Wspm';
         
-        // FIX: Renamed from 'supabase' to 'supabaseClient' to prevent Safari naming conflicts
+        // Use supabaseClient to avoid Safari conflicts
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // ==========================================
@@ -204,7 +223,6 @@
         // ==========================================
         const EXAM_DURATION_MINUTES = 75;
         
-        // Reminder: Add all 75 of your questions here!
         const quizData = [
             { q: "What percentage of analytics work is typically spent processing and cleaning data?", opts: ["10%", "30%", "50%", "70%"], ans: 3 },
             { q: "Which of the following is NOT a stage in the Analytics Life Cycle?", opts: ["Ask", "Prepare", "Process", "Guess"], ans: 3 },
@@ -404,6 +422,8 @@
             }
 
             document.getElementById('btn-prev').style.visibility = index === 0 ? 'hidden' : 'visible';
+            
+            // Updates button text on the last question
             document.getElementById('btn-next').innerText = index === quizData.length - 1 ? 'Save & Finish' : 'Save & Next';
             
             document.querySelectorAll('.palette-btn').forEach(btn => btn.classList.remove('active'));
@@ -427,7 +447,15 @@
             nextQuestion();
         }
 
-        function nextQuestion() { if (currentIndex < quizData.length - 1) loadQuestion(currentIndex + 1); }
+        // FIX 1: Clicking "Save & Finish" on the final question will now actually trigger the submission!
+        function nextQuestion() { 
+            if (currentIndex < quizData.length - 1) {
+                loadQuestion(currentIndex + 1); 
+            } else {
+                submitExam(true); // Triggers submission on the last question
+            }
+        }
+        
         function prevQuestion() { if (currentIndex > 0) loadQuestion(currentIndex - 1); }
 
         function renderPalette() {
@@ -462,6 +490,7 @@
             clearInterval(timerInterval);
             document.getElementById('submit-btn').innerText = "Saving to Database...";
             document.getElementById('submit-btn').disabled = true;
+            document.getElementById('btn-next').disabled = true;
             
             if (document.exitFullscreen) document.exitFullscreen().catch(()=>{});
 
@@ -490,7 +519,6 @@
             // 3. SEND DATA TO SUPABASE
             // ==========================================
             try {
-                // FIX: Changed 'supabase' to 'supabaseClient'
                 const { error } = await supabaseClient
                     .from('exam_results')
                     .insert([{ 
@@ -530,6 +558,49 @@
 
             localStorage.removeItem('examState');
             localStorage.removeItem('examEndTime');
+
+            // FIX 2: Call the leaderboard fetcher right after submission!
+            await fetchLeaderboard();
+        }
+
+        // ==========================================
+        // 4. FETCH AND DISPLAY LEADERBOARD
+        // ==========================================
+        async function fetchLeaderboard() {
+            const leaderboardDiv = document.getElementById('leaderboard-container');
+            leaderboardDiv.innerHTML = '<p style="color: var(--text-light); text-align: center;">Loading Top 10 Scores...</p>';
+            
+            try {
+                const { data, error } = await supabaseClient
+                    .from('exam_results')
+                    .select('name, section, score, percentage')
+                    .order('score', { ascending: false })
+                    .limit(10);
+                
+                if (error) throw error;
+                
+                if (data && data.length > 0) {
+                    let html = '<table class="leaderboard-table">';
+                    html += '<tr><th class="rank-col">Rank</th><th>Student Name</th><th>Section</th><th>Score</th></tr>';
+                    
+                    data.forEach((row, idx) => {
+                        html += `<tr>
+                            <td class="rank-col">#${idx + 1}</td>
+                            <td>${row.name}</td>
+                            <td>Sec ${row.section}</td>
+                            <td style="font-weight: bold; color: var(--answered);">${row.percentage}% (${row.score})</td>
+                        </tr>`;
+                    });
+                    
+                    html += '</table>';
+                    leaderboardDiv.innerHTML = html;
+                } else {
+                    leaderboardDiv.innerHTML = '<p style="text-align: center;">No results available yet. You are the first!</p>';
+                }
+            } catch (err) {
+                console.error("Error fetching leaderboard:", err);
+                leaderboardDiv.innerHTML = '<p style="color: var(--unanswered); text-align: center;">Failed to load leaderboard. Please check your Supabase SELECT policy.</p>';
+            }
         }
 
         function resetSystem() {
