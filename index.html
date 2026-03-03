@@ -195,7 +195,9 @@
         // ==========================================
         const SUPABASE_URL = 'https://xsulqlskcyihlkvvzscg.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_q0VuS8mEiisFDNk1goqSyA_Gir4Wspm';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // FIX: Renamed from 'supabase' to 'supabaseClient' to prevent Safari naming conflicts
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // ==========================================
         // 2. EXAM DATA & STATE
@@ -419,7 +421,8 @@
             // 3. SEND DATA TO SUPABASE
             // ==========================================
             try {
-                const { error } = await supabase
+                // FIX: Changed 'supabase' to 'supabaseClient'
+                const { error } = await supabaseClient
                     .from('exam_results')
                     .insert([{ 
                         name: studentData.name, 
